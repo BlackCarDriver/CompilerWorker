@@ -1,0 +1,7 @@
+*.exe
+*.log
+*.tmp
+*.xml
+config/server.xml
+
+rpc/gen-go
