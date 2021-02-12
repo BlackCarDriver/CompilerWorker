@@ -49,7 +49,7 @@ func initMain() {
 	if config.ServerConfig.IsTest {
 		logs.SetLogger("console")
 	} else {
-		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%s", "daily": false}`, config.ServerConfig.LogPath))
+		logs.SetLogger("file", fmt.Sprintf(`{"filename":"%sserver.log", "daily": false}`, config.ServerConfig.LogPath))
 	}
 }
 
