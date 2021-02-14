@@ -23,6 +23,9 @@ type serverConfig struct {
 
 	LogPath string `xml:"log_path"` // 日志存储的位置(斜杠结尾)
 	IsTest  bool   `xml:"is_test"`
+
+	BuildResultPath string `xml:"build_result_path"` // 代码编译结果放置的目录
+	GoPath          string `xml:"go_path"`
 }
 
 var ServerConfig serverConfig
@@ -41,6 +44,12 @@ func init() {
 
 	// 一些检查和修正
 	ServerConfig.LogPath = strings.TrimRight(ServerConfig.LogPath, "/") + "/"
+	ServerConfig.GoPath = strings.TrimRight(ServerConfig.GoPath, "/") + "/"
+	ServerConfig.BuildResultPath = strings.TrimRight(ServerConfig.BuildResultPath, "/") + "/"
+	if !checkIsFloderExist(ServerConfig.BuildResultPath) {
+		logs.Error("buildResultPath not exist")
+		os.Exit(1)
+	}
 
 	// 计算s2sKey
 	if ServerConfig.S2SKey == "" {
@@ -50,4 +59,16 @@ func init() {
 	}
 
 	logs.Info("ServerConfig: %+v", ServerConfig)
+}
+
+func checkIsFloderExist(path string) bool {
+	stat, err := os.Stat(path)
+	if err != nil && os.IsNotExist(err) {
+		return false
+	}
+	if stat.IsDir() {
+		return true
+	}
+	logs.Error("unexpect error: error=%v", err)
+	return false
 }
