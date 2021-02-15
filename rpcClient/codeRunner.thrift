@@ -11,7 +11,7 @@ generate thrift:
 
 
 service codeRunner extends base.baseService {
-    base.CommomResp buildGo(),
-    base.CommomResp buildCpp(),
-    base.CommomResp run(),
+    base.CommomResp buildGo(1: string code, 2: string input),
+    base.CommomResp buildCpp(1: string code, 2: string input),
+    base.CommomResp run(1: string ctype, 2: string hash, 3: string input),
 }

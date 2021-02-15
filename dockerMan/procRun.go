@@ -1,23 +1,25 @@
 package dockerman
 
 import (
+	"errors"
 	"fmt"
 	"github.com/astaxie/beego/logs"
 	"github.com/docker/docker/api/types/container"
 )
 
-func ProcRun(req *RunCodeRequire) error {
-	var err error
-	if req == nil || req.Code == "" || req.CodeHash =="" || req.InputHash == "" {
+func ProcRun(req *RunCodeRequire) (stdErr, stdOut string, err error) {
+	if req == nil || req.Type == "" || req.CodeHash == "" || req.InputHash == "" {
 		logs.Warn("unexpect params: req=%+v", *req)
-		return fmt.Errorf("unexpect params")
+		err = fmt.Errorf("unexpect params")
+		return
 	}
 	buildPath := getBuildTempPath(req)
 	runPath := fmt.Sprintf("%s/%s", buildPath, req.InputHash)
 	pathStat := checkPathState(runPath)
 	if pathStat == -1 {
 		logs.Warn("unexpect error when check path: pathStat=%d runPath=%s", pathStat, runPath)
-		return fmt.Errorf("unexpect error")
+		err = errors.New("unexpect error")
+		return
 	}
 	if pathStat == 1 {
 		logs.Info("skip run process")
@@ -27,38 +29,33 @@ func ProcRun(req *RunCodeRequire) error {
 		err = saveStrToFile(req.Input, fmt.Sprintf("%s/input", runPath))
 		if err != nil {
 			logs.Error("create main.go failed: error=%v", err)
-			return err
+			return
 		}
 		logs.Info("create input file success")
 	}
 
 	containerConf := &container.Config{
-		Image: "alpine:latest",
-		WorkingDir: "/workplace",
+		Image:           "alpine:latest",
+		WorkingDir:      "/workplace",
 		NetworkDisabled: true,
-		Cmd:   []string{"sh", "-c", "cat input | main"},
+		Cmd:             []string{"sh", "-c", "cat input | main"},
 	}
 	workplaceBind := fmt.Sprintf("%s:/workplace", runPath)
 	mainBind := fmt.Sprintf("%s/main:/bin/main", buildPath)
 	hostConf := &container.HostConfig{
-		Binds:       []string{workplaceBind, mainBind},
+		Binds: []string{workplaceBind, mainBind},
 	}
 	otherConfig := &myConfig{
 		AutoRemove:    true,
 		MaxTimeSecond: 10,
 		ContainerName: "",
 	}
-	stdOut, errOut, err := runByDocker(containerConf, hostConf, otherConfig)
+	stdOut, stdErr, err = runByDocker(containerConf, hostConf, otherConfig)
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return
 	}
-	if stdOut != "" {
-		fmt.Println("std-out: ", stdOut)
-	}
-	if errOut != "" {
-		fmt.Println("std-err: ", errOut)
-	}
+	logs.Debug("stdErr=%q  stdOut=%q", stdErr, stdOut)
 
-	return nil
+	return
 }

@@ -1,13 +1,15 @@
 package dockerman
 
 import (
+	"../config"
 	"bytes"
 	"context"
+	"crypto/md5"
+	"errors"
 	"fmt"
-	"time"
-	"../config"
-
 	"github.com/astaxie/beego/logs"
+	"os"
+	"time"
 
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/container"
@@ -19,18 +21,43 @@ var (
 	cli *client.Client
 )
 
-func init() {
-	err := initClient()
-	if err != nil {
-		panic(err)
-	}
-}
-
-func initClient() (err error) {
+func InitDockerClient() (err error) {
 	cli, err = client.NewClientWithOpts(client.WithVersion("1.39"))
 	if err != nil {
-		return fmt.Errorf("Init client fall: error=%v", err)
+		logs.Emergency("Init client fall: error=%v", err)
+		os.Exit(1)
 	}
+	return nil
+}
+
+// TestGoBuild test if docker fucntion is normal on the machine when the program init
+func TestDockerFunction() error {
+	// dockerman.TestBuild()
+	var exampleCode = `package main
+	import "fmt"
+	func main(){
+		for i:=0; i<100; i++ {
+			fmt.Println("OK")
+		}
+	}`
+	req := RunCodeRequire{
+		Type:      "GO",
+		Code:      exampleCode,
+		Input:     "xianjinrong 22",
+		CodeHash:  GetMD5KeyN(exampleCode, 10),
+		InputHash: GetMD5KeyN("xianjinrong 22", 10),
+	}
+	_, _, err := GoBuild(&req)
+	if err != nil {
+		logs.Error("Gobuild not pass: error=%v", err)
+		return err
+	}
+	_, _, err = ProcRun(&req)
+	if err != nil {
+		logs.Error("Gobuild not pass: error=%v", err)
+		return err
+	}
+	logs.Info("test docker function pass")
 	return nil
 }
 
@@ -38,9 +65,9 @@ func initClient() (err error) {
 
 // RunCodeRequire repercent the require of build go code
 type RunCodeRequire struct {
-	Type string `json:"type"` //[GO|CPP]
-	Code  string `json:"code"`
-	Input string `json:"input"`
+	Type      string `json:"type"` //[GO|CPP]
+	Code      string `json:"code"`
+	Input     string `json:"input"`
 	CodeHash  string `json:""`
 	InputHash string `json:"inputHash"`
 }
@@ -55,6 +82,9 @@ type myConfig struct {
 
 //create a docker container and return the container id
 func createContainer(config *container.Config, hostConfig *container.HostConfig) (containerID string, err error) {
+	if cli == nil {
+		return "", errors.New("docker client is not init")
+	}
 	resp, err := cli.ContainerCreate(context.Background(), config, hostConfig, nil, "")
 	if err != nil {
 		return "", err
@@ -64,16 +94,25 @@ func createContainer(config *container.Config, hostConfig *container.HostConfig)
 
 //start the docker container
 func startContainer(containerID string) error {
+	if cli == nil {
+		return errors.New("docker client is not init")
+	}
 	return cli.ContainerStart(context.Background(), containerID, types.ContainerStartOptions{})
 }
 
 //kill and remove a docker ocntainer
 func removeContainer(containerID string) error {
+	if cli == nil {
+		return errors.New("docker client is not init")
+	}
 	return cli.ContainerRemove(context.Background(), containerID, types.ContainerRemoveOptions{Force: true})
 }
 
 //get the std-out and std-error of a container
 func getOuput(containerID string) (stdout, stderr string, err error) {
+	if cli == nil {
+		return "", "", errors.New("docker client is not init")
+	}
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
@@ -236,14 +275,14 @@ func TestRun1() {
 // TestBuild test build go code
 func TestBuild() {
 	containerConf := &container.Config{
-		Image: "golang:alpine",
-		Env: []string{"CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64"},
-		WorkingDir: "/workplace",
+		Image:           "golang:alpine",
+		Env:             []string{"CGO_ENABLED=0", "GOOS=linux", "GOARCH=amd64"},
+		WorkingDir:      "/workplace",
 		NetworkDisabled: true,
-		Cmd:   []string{"go", "build", "main.go"},
+		Cmd:             []string{"go", "build", "main.go"},
 	}
 	hostConf := &container.HostConfig{
-		Binds:       []string{"/home/driver/GoPath:/go", "/home/driver/tempWorkplace:/workplace"},
+		Binds: []string{"/home/driver/GoPath:/go", "/home/driver/tempWorkplace:/workplace"},
 	}
 	otherConfig := &myConfig{
 		AutoRemove:    true,
@@ -261,4 +300,16 @@ func TestBuild() {
 	if errOut != "" {
 		fmt.Println("std-err: ", errOut)
 	}
+}
+
+// GetMD5KeyN create a hash code
+func GetMD5KeyN(anyMsg interface{}, n int) string {
+	md5Encoder := md5.New()
+	md5Encoder.Write([]byte(fmt.Sprint(anyMsg)))
+	md5Value := fmt.Sprintf("%x", md5Encoder.Sum(nil))
+	if n <= 0 || n >= len(md5Value) {
+		logs.Warning("unexpect length: length=%d\n", n)
+		return md5Value
+	}
+	return md5Value[0:n]
 }
