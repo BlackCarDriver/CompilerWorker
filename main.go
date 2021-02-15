@@ -29,18 +29,17 @@ type svcProgram struct{}
 func (p *svcProgram) Init(env svc.Environment) error {
 	initMain()
 	var err error
-	if !config.ServerConfig.IsTest {
-		err = dockerman.InitDockerClient()
-		if err != nil {
-			logs.Error("init DockerClient failed: error=%v", err)
-			return err
-		}
-		err = dockerman.TestDockerFunction()
-		if err != nil {
-			logs.Error("test docker function failed: error=%v", err)
-			return err
-		}
+	err = dockerman.InitDockerClient()
+	if err != nil {
+		logs.Error("init DockerClient failed: error=%v", err)
+		return err
 	}
+	err = dockerman.TestDockerFunction()
+	if err != nil {
+		logs.Error("test docker function failed: error=%v", err)
+		return err
+	}
+
 	return nil
 }
 

@@ -36,9 +36,7 @@ func TestDockerFunction() error {
 	var exampleCode = `package main
 	import "fmt"
 	func main(){
-		for i:=0; i<100; i++ {
-			fmt.Println("OK")
-		}
+		fmt.Println("SUCCESS")
 	}`
 	req := RunCodeRequire{
 		Type:      "GO",

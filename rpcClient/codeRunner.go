@@ -26,10 +26,7 @@ func (r *myCodeRunner) Ping(ctx context.Context, str string) (string, error) {
 func (r *myCodeRunner) BuildGo(ctx context.Context, code string, input string) (resp *baseService.CommomResp, err error) {
 	logs.Info("buildGo...")
 	var payload respPayload
-	resp = &baseService.CommomResp{
-		Status: -1,
-		Msg:    "OK",
-	}
+
 	req := dockerman.RunCodeRequire{
 		Type:      "GO",
 		Code:      code,
@@ -37,6 +34,10 @@ func (r *myCodeRunner) BuildGo(ctx context.Context, code string, input string) (
 		CodeHash:  dockerman.GetMD5KeyN(code, 10),
 		InputHash: dockerman.GetMD5KeyN(input, hashLen),
 	}
+	resp = &baseService.CommomResp{
+		Status: 0,
+	}
+
 	for loop := true; loop; loop = false {
 		payload.StdErr, payload.StdOut, err = dockerman.GoBuild(&req)
 		logs.Info("GoBuild: error=%v stdErr=%q stdOut=%q", err, payload.StdErr, payload.StdOut)
@@ -52,6 +53,8 @@ func (r *myCodeRunner) BuildGo(ctx context.Context, code string, input string) (
 	if err != nil {
 		resp.Status = -1
 		resp.Msg = fmt.Sprint(err)
+	}else{
+		resp.Msg = dockerman.GetMD5KeyN(code, 10)
 	}
 	resp.Payload, _ = json.Marshal(payload)
 
@@ -76,6 +79,7 @@ func (r *myCodeRunner) Run(ctx context.Context, codeType, hash, input string) (r
 	runReq := &dockerman.RunCodeRequire{
 		Type:      codeType,
 		CodeHash:  hash,
+		Input: input,
 		InputHash: dockerman.GetMD5KeyN(input, hashLen),
 	}
 	resp = &baseService.CommomResp{

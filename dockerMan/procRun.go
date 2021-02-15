@@ -15,6 +15,8 @@ func ProcRun(req *RunCodeRequire) (stdErr, stdOut string, err error) {
 	}
 	buildPath := getBuildTempPath(req)
 	runPath := fmt.Sprintf("%s/%s", buildPath, req.InputHash)
+	logs.Debug("RunCodeRequire=%+v", *req)
+
 	pathStat := checkPathState(runPath)
 	if pathStat == -1 {
 		logs.Warn("unexpect error when check path: pathStat=%d runPath=%s", pathStat, runPath)
