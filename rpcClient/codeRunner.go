@@ -41,12 +41,12 @@ func (r *myCodeRunner) BuildGo(ctx context.Context, code string, input string) (
 	for loop := true; loop; loop = false {
 		payload.StdErr, payload.StdOut, err = dockerman.GoBuild(&req)
 		logs.Info("GoBuild: error=%v stdErr=%q stdOut=%q", err, payload.StdErr, payload.StdOut)
-		if err != nil {
+		if err != nil || payload.StdErr != ""  {
 			break
 		}
 		payload.StdErr, payload.StdOut, err = dockerman.ProcRun(&req)
 		logs.Info("ProcRun result: error=%v stdErr=%q stdOut=%q", err, payload.StdErr, payload.StdOut)
-		if err != nil {
+		if err != nil || payload.StdErr != "" {
 			break
 		}
 	}
@@ -61,15 +61,78 @@ func (r *myCodeRunner) BuildGo(ctx context.Context, code string, input string) (
 	return
 }
 
-func (r *myCodeRunner) BuildCpp(ctx context.Context, code string, input string) (*baseService.CommomResp, error) {
-	logs.Info("buildCpp...")
-	resp := baseService.CommomResp{
-		Status:  0,
-		Msg:     "OK",
-		Payload: nil,
+func (r *myCodeRunner) BuildCpp(ctx context.Context, code string, input string) (resp *baseService.CommomResp, err error) {
+	var payload respPayload
+
+	req := dockerman.RunCodeRequire{
+		Type:      "CPP",
+		Code:      code,
+		Input:     input,
+		CodeHash:  dockerman.GetMD5KeyN(code, 10),
+		InputHash: dockerman.GetMD5KeyN(input, hashLen),
 	}
-	logs.Info("code=%s  input=%s", code, input)
-	return &resp, nil
+	resp = &baseService.CommomResp{
+		Status: 0,
+	}
+
+	for loop := true; loop; loop = false {
+		payload.StdErr, payload.StdOut, err = dockerman.CppBuild(&req)
+		logs.Info("GoBuild: error=%v stdErr=%q stdOut=%q", err, payload.StdErr, payload.StdOut)
+		if err != nil || payload.StdErr != "" {
+			break
+		}
+		payload.StdErr, payload.StdOut, err = dockerman.ProcRun(&req)
+		logs.Info("ProcRun result: error=%v stdErr=%q stdOut=%q", err, payload.StdErr, payload.StdOut)
+		if err != nil || payload.StdErr != "" {
+			break
+		}
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}else{
+		resp.Msg = dockerman.GetMD5KeyN(code, 10)
+	}
+	resp.Payload, _ = json.Marshal(payload)
+
+	return
+}
+
+func (r *myCodeRunner) BuildC(ctx context.Context, code string, input string) (resp *baseService.CommomResp, err error) {
+	var payload respPayload
+
+	req := dockerman.RunCodeRequire{
+		Type:      "C",
+		Code:      code,
+		Input:     input,
+		CodeHash:  dockerman.GetMD5KeyN(code, 10),
+		InputHash: dockerman.GetMD5KeyN(input, hashLen),
+	}
+	resp = &baseService.CommomResp{
+		Status: 0,
+	}
+
+	for loop := true; loop; loop = false {
+		payload.StdErr, payload.StdOut, err = dockerman.CppBuild(&req)
+		logs.Info("CBuild: error=%v stdErr=%q stdOut=%q", err, payload.StdErr, payload.StdOut)
+		if err != nil || payload.StdErr != "" {
+			break
+		}
+		payload.StdErr, payload.StdOut, err = dockerman.ProcRun(&req)
+		logs.Info("ProcRun result: error=%v stdErr=%q stdOut=%q", err, payload.StdErr, payload.StdOut)
+		if err != nil || payload.StdErr != "" {
+			break
+		}
+	}
+	if err != nil {
+		resp.Status = -1
+		resp.Msg = fmt.Sprint(err)
+	}else{
+		resp.Msg = dockerman.GetMD5KeyN(code, 10)
+	}
+	resp.Payload, _ = json.Marshal(payload)
+
+	return
 }
 
 func (r *myCodeRunner) Run(ctx context.Context, codeType, hash, input string) (resp *baseService.CommomResp, err error) {

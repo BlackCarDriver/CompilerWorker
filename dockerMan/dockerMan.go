@@ -52,7 +52,7 @@ func TestDockerFunction() error {
 	}
 	_, _, err = ProcRun(&req)
 	if err != nil {
-		logs.Error("Gobuild not pass: error=%v", err)
+		logs.Error("ProcRun not pass: error=%v", err)
 		return err
 	}
 	logs.Info("test docker function pass")
@@ -63,10 +63,10 @@ func TestDockerFunction() error {
 
 // RunCodeRequire repercent the require of build go code
 type RunCodeRequire struct {
-	Type      string `json:"type"` //[GO|CPP]
+	Type      string `json:"type"` //[GO|CPP|C]
 	Code      string `json:"code"`
 	Input     string `json:"input"`
-	CodeHash  string `json:""`
+	CodeHash  string `json:"codeHash"`
 	InputHash string `json:"inputHash"`
 }
 
@@ -233,6 +233,8 @@ func getBuildTempPath(req *RunCodeRequire) (path string) {
 		path = fmt.Sprintf("%sGo/%s", config.ServerConfig.BuildResultPath, md5Key)
 	case "CPP":
 		path = fmt.Sprintf("%sCPP/%s", config.ServerConfig.BuildResultPath, md5Key)
+	case "C":
+		path = fmt.Sprintf("%sC/%s", config.ServerConfig.BuildResultPath, md5Key)
 	default:
 		logs.Error("unexpect params: req=%+v", *req)
 		path = fmt.Sprintf("%sUnknow/%s", config.ServerConfig.BuildResultPath, md5Key)

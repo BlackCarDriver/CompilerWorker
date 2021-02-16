@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-
+	"bufio"
 	"github.com/astaxie/beego/logs"
 )
 
@@ -34,4 +34,21 @@ func saveStrToFile(str, path string) error {
 	}
 	err := ioutil.WriteFile(path, []byte(str), 0644)
 	return err
+}
+
+//read a file and parse it into a string 📝
+func ParseFile(path string) (text string, err error) {
+	file, err := os.Open(path)
+	if err != nil {
+		logs.Warn("Open %s fall: error=%v", path, err)
+		return "", err
+	}
+	defer file.Close()
+	buf := bufio.NewReader(file)
+	bytes, err := ioutil.ReadAll(buf)
+	if err != nil {
+		logs.Warn("ioutil.ReadAll fall : %v", err)
+		return "", err
+	}
+	return string(bytes), nil
 }

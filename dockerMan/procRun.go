@@ -16,6 +16,7 @@ func ProcRun(req *RunCodeRequire) (stdErr, stdOut string, err error) {
 	buildPath := getBuildTempPath(req)
 	runPath := fmt.Sprintf("%s/%s", buildPath, req.InputHash)
 	logs.Debug("RunCodeRequire=%+v", *req)
+	logs.Debug("buildPath=%s runPath=%s", buildPath, runPath)
 
 	pathStat := checkPathState(runPath)
 	if pathStat == -1 {
@@ -25,7 +26,12 @@ func ProcRun(req *RunCodeRequire) (stdErr, stdOut string, err error) {
 	}
 	if pathStat == 1 {
 		logs.Info("skip run process")
-		// TODO:return output file
+		stdErr, err = ParseFile(fmt.Sprintf("%s/stderr", runPath))
+		if err!=nil || stdErr != "" {
+			return
+		}
+		stdOut, err = ParseFile(fmt.Sprintf("%s/stdout", runPath))
+		return
 	}
 	if pathStat == 2 {
 		err = saveStrToFile(req.Input, fmt.Sprintf("%s/input", runPath))
@@ -37,10 +43,10 @@ func ProcRun(req *RunCodeRequire) (stdErr, stdOut string, err error) {
 	}
 
 	containerConf := &container.Config{
-		Image:           "alpine:latest",
+		Image:           "ubuntu:latest",
 		WorkingDir:      "/workplace",
 		NetworkDisabled: true,
-		Cmd:             []string{"sh", "-c", "cat input | main"},
+		Cmd:             []string{"sh", "-c", "cat input | main 1>stdout 2>stderr"},
 	}
 	workplaceBind := fmt.Sprintf("%s:/workplace", runPath)
 	mainBind := fmt.Sprintf("%s/main:/bin/main", buildPath)
@@ -52,11 +58,13 @@ func ProcRun(req *RunCodeRequire) (stdErr, stdOut string, err error) {
 		MaxTimeSecond: 10,
 		ContainerName: "",
 	}
-	stdOut, stdErr, err = runByDocker(containerConf, hostConf, otherConfig)
+	_, _, err = runByDocker(containerConf, hostConf, otherConfig)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
+	stdErr, _ = ParseFile(fmt.Sprintf("%s/stderr", runPath))
+	stdOut, _ = ParseFile(fmt.Sprintf("%s/stdout", runPath))
 	logs.Debug("stdErr=%q  stdOut=%q", stdErr, stdOut)
 
 	return
