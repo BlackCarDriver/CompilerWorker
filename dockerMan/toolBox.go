@@ -1,11 +1,11 @@
 package dockerman
 
 import (
+	"bufio"
 	"fmt"
+	"github.com/astaxie/beego/logs"
 	"io/ioutil"
 	"os"
-	"bufio"
-	"github.com/astaxie/beego/logs"
 )
 
 // return 1:alreadyExist 2:notExistAndCreated -1:notAFloderOrOtherError
